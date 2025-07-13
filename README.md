@@ -148,7 +148,6 @@ All records are stored immutably on-chain, enabling audit trails and real-time u
 
 **Mainak Pal**
 CSE, JGEC | SIP 2025
-[LinkedIn](https://www.linkedin.com/in/mainak-pal/) • [GitHub](https://github.com/your-username) • [Email](mailto:your.email@example.com)
 
 ---
 
