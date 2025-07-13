@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EtherFineChain</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .ganache-info {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        #imagePreview {
+            max-width: 100%;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 EtherFineChain</h1>
+        
+        <div class="ganache-info">
+            <h3>Ganache Testing Setup</h3>
+            <p><strong>Authority Account:</strong> First account in Ganache (will receive payments)</p>
+            <p><strong>Vehicle Owner Account:</strong> Second account in Ganache (will pay penalties)</p>
+        </div>
+
+        <form id="violationForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="vehicleId">Vehicle ID *</label>
+                <input type="text" id="vehicleId" required value="KA01AB1234">
+            </div>
+
+            <div class="form-group">
+                <label for="violationType">Violation Type *</label>
+                <select id="violationType" required>
+                    <option value="Speeding">Speeding (0.05 ETH)</option>
+                    <option value="Red Light">Red Light Violation (0.03 ETH)</option>
+                    <option value="No Helmet">No Helmet (0.01 ETH)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" value="MG Road, Bangalore">
+            </div>
+
+            <div class="form-group">
+                <label for="cameraId">Camera ID</label>
+                <input type="text" id="cameraId" value="CAM001">
+            </div>
+            <div class="form-group">
+                <label for="ownerPrivateKey">Vehicle Owner Private Key *</label>
+                <input type="password" id="ownerPrivateKey" required 
+                    placeholder="Paste private key of vehicle owner account">
+                <small>Use Ganache's exported private key for that account (testing only)</small>
+            </div>
+
+
+            <div class="form-group">
+                <label for="ownerAddress">Vehicle Owner Address *</label>
+                <input type="text" id="ownerAddress" required 
+                       placeholder="Paste 2nd Ganache account address">
+                <small>Get this from Ganache's accounts list (usually the second one)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="violationImage">Violation Evidence (Image)</label>
+                <input type="file" id="violationImage" accept="image/*">
+                <img id="imagePreview" alt="Image preview">
+            </div>
+
+            <button type="submit" id="submitBtn">Process Violation</button>
+        </form>
+
+        <div id="results">
+            <h3>Transaction Results</h3>
+            <p>Submit a violation to see transaction details...</p>
+        </div>
+
+        <div class="ganache-info">
+            <h3>What to Check in Ganache</h3>
+            <ol>
+                <li>Open Ganache application</li>
+                <li>Watch the "Transactions" tab for new entries</li>
+                <li>Check account balances before/after submission</li>
+                <li>Look for ETH transfer from 2nd account → 1st account</li>
+            </ol>
+        </div>
+    </div>
+    <small>This is for record. ETH will be sent by admin account.</small>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+        
+        // Image preview functionality
+        document.getElementById('violationImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // document.getElementById('violationForm').addEventListener('submit', async function(e) {
+        //     e.preventDefault();
+            
+        //     const submitBtn = document.getElementById('submitBtn');
+        //     submitBtn.disabled = true;
+        //     submitBtn.textContent = 'Processing...';
+            
+        //     const resultsDiv = document.getElementById('results');
+        //     resultsDiv.innerHTML = '<h3>Transaction Results</h3><p>Processing violation...</p>';
+
+        //     try {
+        //         const formData = new FormData();
+        //         formData.append('vehicle_id', document.getElementById('vehicleId').value);
+        //         formData.append('violation_type', document.getElementById('violationType').value);
+        //         formData.append('location', document.getElementById('location').value);
+        //         formData.append('camera_id', document.getElementById('cameraId').value);
+        //         formData.append('owner_address', document.getElementById('ownerAddress').value);
+                
+        //         const imageInput = document.getElementById('violationImage');
+        //         if (imageInput.files[0]) {
+        //             formData.append('violation_image', imageInput.files[0]);
+        //         }
+
+        //         const response = await fetch(`${API_BASE_URL}/process-violation-auto`, {
+        //             method: 'POST',
+        //             body: formData
+        //         });
+
+        //         const data = await response.json();
+
+        //         if (response.ok) {
+        //             resultsDiv.innerHTML = `
+        //                 <h3>✅ Violation Processed Successfully!</h3>
+        //                 <p><strong>Transaction Hash:</strong> ${data.tx_hash}</p>
+        //                 <p><strong>From:</strong> ${document.getElementById('ownerAddress').value}</p>
+        //                 <p><strong>To:</strong> Authority Account</p>
+        //                 <p><strong>Amount Deducted:</strong> ${getPenaltyAmount(document.getElementById('violationType').value)} ETH</p>
+        //                 <p><strong>Ganache Check:</strong> Look for this transaction in Ganache</p>
+        //             `;
+        //         } else {
+        //             resultsDiv.innerHTML = `
+        //                 <h3>❌ Error Processing Violation</h3>
+        //                 <p><strong>Error:</strong> ${data.error || 'Unknown error'}</p>
+        //                 ${data.tx_hash ? `<p><strong>Failed TX Hash:</strong> ${data.tx_hash}</p>` : ''}
+        //             `;
+        //         }
+        //     } catch (error) {
+        //         resultsDiv.innerHTML = `
+        //             <h3>❌ Network Error</h3>
+        //             <p>${error.message}</p>
+        //             <p>Check if your Flask backend is running on port 5000</p>
+        //         `;
+        //     } finally {
+        //         submitBtn.disabled = false;
+        //         submitBtn.textContent = 'Process Violation';
+        //     }
+        // });
+
+        document.getElementById('violationForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '<h3>Transaction Results</h3><p>Processing violation...</p>';
+
+    try {
+        const formData = new FormData();
+        formData.append('vehicle_id', document.getElementById('vehicleId').value);
+        formData.append('violation_type', document.getElementById('violationType').value);
+        formData.append('location', document.getElementById('location').value);
+        formData.append('camera_id', document.getElementById('cameraId').value);
+        formData.append('owner_private_key', document.getElementById('ownerPrivateKey').value);
+        formData.append('owner_address', document.getElementById('ownerAddress').value);
+        
+        const imageInput = document.getElementById('violationImage');
+        if (imageInput.files[0]) {
+            formData.append('violation_image', imageInput.files[0]);
+        }
+
+        // Change the endpoint to manual processing
+        const response = await fetch(`http://localhost:5000/api/process-violation-manual`, {
+            method: 'POST',
+            body: formData
+        });
+
+
+     // First check if we got any response at all
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server returned ${response.status}: ${errorText}`);
+        }
+
+        // Then try to parse as JSON
+        const data = await response.json();
+
+        resultsDiv.innerHTML = `
+            <h3>✅ Violation Processed Successfully!</h3>
+            <p><strong>Transaction Hash:</strong> ${data.tx_hash}</p>
+            <h3>✅ Violation Processed Successfully!</h3>
+            <p><strong>Transaction Hash:</strong> ${data.tx_hash}</p>
+            <p><strong>From:</strong> ${data.owner_address}</p>
+            <p><strong>To:</strong> Authority Account</p>
+            <p><strong>Amount Deducted:</strong> ${data.penalty_amount} ETH</p>
+            <p><strong>IPFS Hash:</strong> ${data.image_hash}</p>
+            <p><strong>View Evidence:</strong> <a href="${data.pinata_url}" target="_blank">${data.pinata_url}</a></p>
+            <hr>
+            <p><strong>⏱️ Pinata Upload Time:</strong> ${data.pinata_upload_time_ms} ms</p>
+            <p><strong>⚡ Transaction Latency:</strong> ${data.transaction_latency_ms} ms</p>
+            <p><strong>📦 Total Latency:</strong> ${data.total_latency_ms} ms</p>
+            <p><strong>⛽ Gas Used:</strong> ${data.gas_used}</p>
+        `;
+    } catch (error) {
+        console.error('Error:', error);
+        resultsDiv.innerHTML = `
+            <h3>❌ Error Processing Violation</h3>
+            <p><strong>Error:</strong> ${error.message}</p>
+            <p>Please check:</p>
+            <ol>
+                <li>Flask backend is running (python apponlyBlock2.py)</li>
+                <li>Ganache is running</li>
+                <li>All form fields are filled</li>
+                <li>Owner address is valid</li>
+            </ol>
+        `;
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Process Violation';
+    }
+});
+        function getPenaltyAmount(violationType) {
+            const penalties = {
+                'Speeding': 0.05,
+                'Red Light': 0.03,
+                'No Helmet': 0.01
+            };
+            return penalties[violationType] || 0;
+        }
+    </script>
+</body>
+</html>
